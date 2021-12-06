@@ -6,7 +6,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 from rest_framework.test import APITestCase
-from homeapp.models import SiteUpdateNews
+from homeapp.models import SiteUpdateNews, UserUpdateNewsRelation
 from homeapp.serializers import SiteUpdateNewsSerializer
 
 
@@ -212,3 +212,42 @@ class HomeApiTestCase(APITestCase):
 
         with self.assertRaises(Http404):
             get_object_or_404(SiteUpdateNews, id=test_id)
+
+
+class UserUpdateNewsRelationTestCase(APITestCase):
+
+    def setUp(self):
+
+        self.user = User.objects.create(username='test_username')
+        self.fake_user = User.objects.create(username='fake_username')
+        self.staff_user = User.objects.create(username='staff_username', is_staff=True)
+
+        self.update_news_1 = SiteUpdateNews.objects.create(
+            title='Run DB',
+            intro='some intro',
+            text='Это тест.',
+            owner=self.user,
+        )
+
+    # PATCH METHOD #
+    def test_patch_user_news_rel(self):
+
+        url = reverse('userupdatenewsrelation-detail', args=(self.update_news_1.id, ))
+
+        data = {
+            'like': True,
+        }
+
+        self.client.force_login(self.user)
+
+        json_data = json.dumps(data)
+
+        response = self.client.patch(url, data=json_data,
+                                     content_type='application/json')
+
+        relation_news_user = UserUpdateNewsRelation.objects.get(update_news=self.update_news_1.id)
+
+        self.assertEqual(status.HTTP_200_OK, response.status_code)
+        relation_news_user.refresh_from_db()
+        self.assertTrue(relation_news_user.like)
+
