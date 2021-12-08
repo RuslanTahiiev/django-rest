@@ -47,7 +47,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'debug_toolbar',
     'social_django',
+
     'homeapp',
 ]
 
@@ -59,6 +62,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'debug_toolbar_force.middleware.ForceDebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'djangoProject.urls'
@@ -165,6 +171,10 @@ REST_FRAMEWORK = {
 APPEND_SLASH = True
 
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
 
 SOCIAL_AUTH_GITHUB_KEY = environ.get('SOCIAL_AUTH_GITHUB_KEY')
 SOCIAL_AUTH_GITHUB_SECRET = environ.get('SOCIAL_AUTH_GITHUB_SECRET')

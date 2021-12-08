@@ -1,5 +1,6 @@
 import json
 from django.contrib.auth.models import User
+from django.db.models import Count, Case, When, Avg, F
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -39,6 +40,7 @@ class HomeApiTestCase(APITestCase):
             intro='2',
             text='3'
         )
+        UserUpdateNewsRelation.objects.create(user=self.user, update_news=self.update_news_1, like=True, rate=5)
 
     # GET METHOD #
     def test_get_index(self):
@@ -50,16 +52,27 @@ class HomeApiTestCase(APITestCase):
 
         url = reverse('siteupdatenews-list')
         response = self.client.get(url)
-        serializer_data = SiteUpdateNewsSerializer([self.update_news_1, self.update_news_2,
-                                                    self.update_news_3, self.update_news_4], many=True).data
+        news = SiteUpdateNews.objects.all().annotate(
+            annotated_likes=Count(Case(When(userupdatenewsrelation__like=True, then=1))),
+            rating=Avg('userupdatenewsrelation__rate'),
+            owner_name=F('owner__username'),
+        ).order_by('id')
+        serializer_data = SiteUpdateNewsSerializer(news, many=True).data
         self.assertEqual(serializer_data, response.data)
         self.assertEqual(status.HTTP_200_OK, response.status_code)
+        self.assertEqual(serializer_data[0]['rating'], '5.00')
+        self.assertEqual(serializer_data[0]['annotated_likes'], 1)
 
     def test_get_siteupdatenews_search(self):
 
         url = reverse('siteupdatenews-list')
         response = self.client.get(url, data={'search': 'title'})
-        serializer_data = SiteUpdateNewsSerializer([self.update_news_2, self.update_news_3], many=True).data
+        news = SiteUpdateNews.objects.filter(id__in=[self.update_news_2.id, self.update_news_3.id]).annotate(
+            annotated_likes=Count(Case(When(userupdatenewsrelation__like=True, then=1))),
+            rating=Avg('userupdatenewsrelation__rate'),
+            owner_name=F('owner__username'),
+        ).order_by('id')
+        serializer_data = SiteUpdateNewsSerializer(news, many=True).data
         self.assertEqual(serializer_data, response.data)
         self.assertEqual(status.HTTP_200_OK, response.status_code)
 
@@ -67,7 +80,12 @@ class HomeApiTestCase(APITestCase):
 
         url = reverse('siteupdatenews-list')
         response = self.client.get(url, data={'title': '1'})
-        serializer_data = SiteUpdateNewsSerializer([self.update_news_4], many=True).data
+        news = SiteUpdateNews.objects.filter(id__in=[self.update_news_4.id]).annotate(
+            annotated_likes=Count(Case(When(userupdatenewsrelation__like=True, then=1))),
+            rating=Avg('userupdatenewsrelation__rate'),
+            owner_name=F('owner__username'),
+        ).order_by('id')
+        serializer_data = SiteUpdateNewsSerializer(news, many=True).data
         self.assertEqual(serializer_data, response.data)
         self.assertEqual(status.HTTP_200_OK, response.status_code)
 
@@ -75,7 +93,11 @@ class HomeApiTestCase(APITestCase):
 
         url = reverse('siteupdatenews-list')
         response = self.client.get(url, data={'ordering': '-date'})
-        queryset = SiteUpdateNews.objects.all().order_by('-date')
+        queryset = SiteUpdateNews.objects.all().order_by('-date').annotate(
+            annotated_likes=Count(Case(When(userupdatenewsrelation__like=True, then=1))),
+            rating=Avg('userupdatenewsrelation__rate'),
+            owner_name=F('owner__username'),
+        ).order_by('-date')
         serializer_data = SiteUpdateNewsSerializer(queryset, many=True).data
         self.assertEqual(serializer_data, response.data)
         self.assertEqual(status.HTTP_200_OK, response.status_code)

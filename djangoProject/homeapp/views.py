@@ -1,3 +1,4 @@
+from django.db.models import Count, Case, When, Avg, Subquery, Value, F
 from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -17,7 +18,11 @@ def index(request):
 
 
 class SiteUpdateNewsViewSet(ModelViewSet):
-    queryset = SiteUpdateNews.objects.all()
+    queryset = SiteUpdateNews.objects.all().annotate(
+            annotated_likes=Count(Case(When(userupdatenewsrelation__like=True, then=1))),
+            rating=Avg('userupdatenewsrelation__rate'),
+            owner_name=F('owner__username'),
+        ).prefetch_related('watchers').order_by('id')
     serializer_class = SiteUpdateNewsSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     permission_classes = [IsOwnerOrStaffOrReadOnly]
@@ -39,8 +44,8 @@ class UserUpdateNewsRelationView(UpdateModelMixin, GenericViewSet):
     def get_object(self):
         obj, _ = UserUpdateNewsRelation.objects.get_or_create(user=self.request.user,
                                                               update_news=SiteUpdateNews.objects.get(
-                                                                      pk=int(self.kwargs['id'])
-                                                                  )
+                                                                            pk=int(self.kwargs['id'])
+                                                                            )
                                                               )
         return obj
 
